@@ -10,7 +10,6 @@ const YAML = require('yamljs');
 const swaggerDocument = YAML.load("./swagger.yaml");
 app.use("/api-docs",swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-
 //regular middleware
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
@@ -27,9 +26,11 @@ app.use(morgan("tiny"));
 
 //import all routes here
 const user = require('./routes/user');
+const product = require("./routes/product");
 
 //router middleware
 app.use("/api/v1",user);
+app.use("/api/v1",product);
 
 //export app js
 module.exports = app
