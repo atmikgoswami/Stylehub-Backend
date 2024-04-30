@@ -8,7 +8,7 @@ info:
 
 servers:
   - url: "{protocol}://{url}/api/{version}"
-    description: for local host 
+    description: for local host
     variables:
       version:
         enum:
@@ -34,4 +34,3 @@ components:
     BearerAuth:
       type: http
       scheme: bearer
-
