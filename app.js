@@ -3,6 +3,9 @@ const app = express();
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const fileUpload = require("express-fileupload");
+const cors = require('cors')
+
+app.use(cors());
 
 //for swagger documentation
 const swaggerUi = require("swagger-ui-express");

@@ -45,6 +45,7 @@ exports.login = BigPromise(async (req, res, next) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
+    console.log(req);
     return next(new CustomError("Please provide email and password", 400));
   }
 
@@ -58,7 +59,9 @@ exports.login = BigPromise(async (req, res, next) => {
     return next(new CustomError("Email or password does not match ", 400));
   }
 
+  
   cookieToken(user, res);
+  console.log('Login successfull');
 });
 
 exports.logout = BigPromise(async (req, res, next) => {
