@@ -59,9 +59,8 @@ exports.login = BigPromise(async (req, res, next) => {
     return next(new CustomError("Email or password does not match ", 400));
   }
 
-  
   cookieToken(user, res);
-  console.log('Login successfull');
+  console.log("Login successfull");
 });
 
 exports.logout = BigPromise(async (req, res, next) => {
@@ -77,6 +76,12 @@ exports.logout = BigPromise(async (req, res, next) => {
 
 exports.getCartItems = BigPromise(async (req, res, next) => {
   const user = await User.findById(req.user.id);
+  if (!user) {
+    res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
   const cartArray = user.cart;
 
   let products = [];
@@ -94,6 +99,12 @@ exports.getCartItems = BigPromise(async (req, res, next) => {
 
 exports.addCartItem = BigPromise(async (req, res, next) => {
   const user = await User.findById(req.user.id);
+  if (!user) {
+    res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
   const { productId } = req.body;
 
   let cartArray = user.cart;
@@ -102,6 +113,161 @@ exports.addCartItem = BigPromise(async (req, res, next) => {
 
   user.cart = cartArray;
 
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    user,
+  });
+});
+
+exports.deleteCartItem = BigPromise(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
+  const { productId } = req.body;
+
+  let cartArray = user.cart;
+  let itemRemoved = false;
+
+  for (let index = 0; index < cartArray.length; index++) {
+    if (cartArray[index]._id.toString() === productId) {
+      cartArray.splice(index, 1);
+      itemRemoved = true;
+      break;
+    }
+  }
+
+  if (!itemRemoved) {
+    return res.status(404).json({
+      success: false,
+      message: "No such product exists in cart",
+    });
+  }
+
+  user.cart = cartArray;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    user,
+  });
+});
+
+exports.addAddress = BigPromise(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
+
+  const { name, address, city, phoneNo, postalCode, state, country } = req.body;
+
+  const existingAddress = user.shippinginfo.find((addr) => addr.name === name);
+
+  if (existingAddress) {
+    res.status(400).json({
+      success: false,
+      message: "Address with same name already exists",
+    });
+  }
+
+  user.shippinginfo.push({
+    name: name.toLowerCase(),
+    address,
+    city,
+    phoneNo,
+    postalCode,
+    state,
+    country,
+  });
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    user,
+  });
+});
+
+exports.updateaddress = BigPromise(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    res.status(400).json({
+      success: false,
+      message: "No user found",
+    });
+  }
+
+  const { name, address, city, phoneNo, postalCode, state, country } = req.body;
+
+  let addressArray = user.shippinginfo;
+  let addressUpdated = false;
+
+  for (let index = 0; index < addressArray.length; index++) {
+    if (addressArray[index].name === name.toLowerCase()) {
+      addressArray[index].address = address;
+      addressArray[index].city = city;
+      addressArray[index].phoneNo = phoneNo;
+      addressArray[index].postalCode = postalCode;
+      addressArray[index].state = state;
+      addressArray[index].country = country;
+      addressUpdated = true;
+      break;
+    }
+  }
+
+  if (!addressUpdated) {
+    return res.status(404).json({
+      success: false,
+      message: "Address not found for update",
+    });
+  }
+
+  user.shippinginfo = addressArray;
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    user,
+  });
+});
+
+exports.deleteaddress = BigPromise(async (req, res, next) => {
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    return res.status(400).json({
+      success: false,
+      message: "No user found",
+    });
+  }
+
+  const { name } = req.body;
+  let addressArray = user.shippinginfo;
+  let addressRemoved = false;
+
+  for (let index = 0; index < addressArray.length; index++) {
+    if (addressArray[index].name === name.toLowerCase()) {
+      addressArray.splice(index, 1);
+      addressRemoved = true;
+      break;
+    }
+  }
+
+  if (!addressRemoved) {
+    return res.status(404).json({
+      success: false,
+      message: "Address not found for removal",
+    });
+  }
+
+  user.shippinginfo = addressArray;
   await user.save();
 
   res.status(200).json({
@@ -158,6 +324,13 @@ exports.updateUserDetails = BigPromise(async (req, res, next) => {
 
 exports.getLoggedInUserDetails = BigPromise(async (req, res, next) => {
   const user = await User.findById(req.user.id);
+
+  if (!user) {
+    res.status(404).json({
+      success: false,
+      message: "User not found",
+    });
+  }
 
   res.status(200).json({
     success: true,
