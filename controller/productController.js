@@ -1,8 +1,11 @@
 const Product = require("../models/product");
+const Warehouse = require("../models/warehouse");
 const BigPromise = require("../middleware/bigPromise");
 const cloudinary = require("cloudinary");
 const CustomError = require("../utils/customError");
 const WhereClause = require("../utils/whereClause");
+const NodeGeocoder = require("node-geocoder");
+const geolib = require("geolib");
 
 exports.getAllProduct = BigPromise(async (req, res, next) => {
   const resultPerPage = 6;
@@ -117,6 +120,71 @@ exports.getOnlyReviewsPerProduct = BigPromise(async (req, res, next) => {
   res.status(200).json({
     success: true,
     reviews: product.reviews,
+  });
+});
+
+exports.getStock = BigPromise(async (req, res, next) => {
+  const geocoder = NodeGeocoder({
+    provider: "openstreetmap",
+  });
+
+  const { productId, userPincode } = req.body;
+  const product = await Product.findById(productId);
+
+  if (!product) {
+    return next(new CustomError("Product not found with this id", 400));
+  }
+
+  const warehousesArray = product.warehouses;
+  let stock = 0,
+    dist = 1e9;
+
+  for (let index = 0; index < warehousesArray.length; index++) {
+    let destWarehouse = await Warehouse.findById(
+      warehousesArray[index].warehouse
+    );
+    const destaddr = destWarehouse.postalCode;
+
+    // Geocode addresses to get coordinates
+    const [geoAddress1, geoAddress2] = await Promise.all([
+      geocoder.geocode(userPincode),
+      geocoder.geocode(destaddr),
+    ]);
+
+    if (!geoAddress1.length || !geoAddress2.length) {
+      return next(
+        new CustomError("One or both addresses could not be geocoded", 400)
+      );
+    }
+
+    // Extract latitude and longitude for both addresses
+    const { latitude: lat1, longitude: lon1 } = geoAddress1[0];
+    const { latitude: lat2, longitude: lon2 } = geoAddress2[0];
+
+    // Calculate distance using geolib
+    const distance = geolib.getDistance(
+      { latitude: lat1, longitude: lon1 },
+      { latitude: lat2, longitude: lon2 }
+    );
+
+    if (distance < dist) {
+      dist = distance;
+      stock = warehousesArray[index].stock;
+    }
+  }
+
+  let speed = "4 day delivery";
+  if (dist <= 10000) {
+    speed = "fast delivery";
+  } else if (dist >= 100000) {
+    speed = "none";
+    stock = 0;
+  }
+
+  res.status(200).json({
+    success: true,
+    stock: stock,
+    speed: speed,
   });
 });
 

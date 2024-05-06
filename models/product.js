@@ -48,10 +48,19 @@ const productSchema = new mongoose.Schema({
         "Please select foruse type ONLY from - Men, Women, Boys, Girls, All",
     },
   },
-  stock: {
-    type: Number,
-    required: [true, "Please add a number in stock"],
-  },
+  warehouses: [
+    {
+      warehouse: {
+        type: mongoose.Schema.ObjectId,
+        ref: "Warehouse",
+        required: true,
+      },
+      stock: {
+        type: Number,
+        required: true,
+      },
+    },
+  ],
   brand: {
     type: String,
     required: [true, "Please add a brand"],

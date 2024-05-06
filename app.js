@@ -3,7 +3,7 @@ const app = express();
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const fileUpload = require("express-fileupload");
-const cors = require('cors')
+const cors = require("cors");
 
 app.use(cors());
 
@@ -32,10 +32,12 @@ app.use(morgan("tiny"));
 //import all routes here
 const user = require("./routes/user");
 const product = require("./routes/product");
+const warehouse = require("./routes/warehouse");
 
 //router middleware
 app.use("/api/v1", user);
 app.use("/api/v1", product);
+app.use("/api/v1", warehouse);
 
 //export app js
 module.exports = app;

@@ -12,6 +12,7 @@ const {
   addReview,
   deleteReview,
   getOnlyReviewsPerProduct,
+  getStock,
 } = require("../controller/productController");
 
 //user routes
@@ -22,6 +23,7 @@ router
   .put(isLoggedIn, addReview)
   .delete(isLoggedIn, deleteReview);
 router.route("/reviews").get(isLoggedIn, getOnlyReviewsPerProduct);
+router.route("/stock").post(isLoggedIn, getStock);
 
 //admin routes
 router
