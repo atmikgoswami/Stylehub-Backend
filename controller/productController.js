@@ -6,6 +6,7 @@ const CustomError = require("../utils/customError");
 const WhereClause = require("../utils/whereClause");
 const NodeGeocoder = require("node-geocoder");
 const geolib = require("geolib");
+const axios = require('axios');
 
 exports.getAllProduct = BigPromise(async (req, res, next) => {
   const resultPerPage = 6;
@@ -124,10 +125,6 @@ exports.getOnlyReviewsPerProduct = BigPromise(async (req, res, next) => {
 });
 
 exports.getStock = BigPromise(async (req, res, next) => {
-  const geocoder = NodeGeocoder({
-    provider: "openstreetmap",
-  });
-
   const { productId, userPincode } = req.body;
   const product = await Product.findById(productId);
 
@@ -139,53 +136,57 @@ exports.getStock = BigPromise(async (req, res, next) => {
   let stock = 0,
     dist = 1e9;
 
-  for (let index = 0; index < warehousesArray.length; index++) {
-    let destWarehouse = await Warehouse.findById(
-      warehousesArray[index].warehouse
-    );
-    const destaddr = destWarehouse.postalCode;
+  // Function to get geocode data
+  const getGeocode = async (pincode) => {
+    const response = await axios.get('https://nominatim.openstreetmap.org/search', {
+      params: {
+        q: pincode,
+        format: 'json',
+        addressdetails: 1,
+      }
+    });
+    if (response.data.length === 0) {
+      throw new Error(`Pincode ${pincode} could not be geocoded`);
+    }
+    return response.data[0];
+  };
 
-    // Geocode addresses to get coordinates
-    const [geoAddress1, geoAddress2] = await Promise.all([
-      geocoder.geocode(userPincode),
-      geocoder.geocode(destaddr),
-    ]);
+  try {
+    const userLocation = await getGeocode(userPincode);
+    const { lat: lat1, lon: lon1 } = userLocation;
 
-    if (!geoAddress1.length || !geoAddress2.length) {
-      return next(
-        new CustomError("One or both addresses could not be geocoded", 400)
+    for (let index = 0; index < warehousesArray.length; index++) {
+      let destWarehouse = await Warehouse.findById(warehousesArray[index].warehouse);
+      const destLocation = await getGeocode(destWarehouse.postalCode);
+      const { lat: lat2, lon: lon2 } = destLocation;
+
+      const distance = geolib.getDistance(
+        { latitude: lat1, longitude: lon1 },
+        { latitude: lat2, longitude: lon2 }
       );
+
+      if (distance < dist) {
+        dist = distance;
+        stock = warehousesArray[index].stock;
+      }
     }
 
-    // Extract latitude and longitude for both addresses
-    const { latitude: lat1, longitude: lon1 } = geoAddress1[0];
-    const { latitude: lat2, longitude: lon2 } = geoAddress2[0];
-
-    // Calculate distance using geolib
-    const distance = geolib.getDistance(
-      { latitude: lat1, longitude: lon1 },
-      { latitude: lat2, longitude: lon2 }
-    );
-
-    if (distance < dist) {
-      dist = distance;
-      stock = warehousesArray[index].stock;
+    let speed = "4 day delivery";
+    if (dist <= 10000) {
+      speed = "fast delivery";
+    } else if (dist >= 100000) {
+      speed = "none";
+      stock = 0;
     }
-  }
 
-  let speed = "4 day delivery";
-  if (dist <= 10000) {
-    speed = "fast delivery";
-  } else if (dist >= 100000) {
-    speed = "none";
-    stock = 0;
+    res.status(200).json({
+      success: true,
+      stock: stock,
+      speed: speed,
+    });
+  } catch (error) {
+    return next(new CustomError(error.message, 400));
   }
-
-  res.status(200).json({
-    success: true,
-    stock: stock,
-    speed: speed,
-  });
 });
 
 //admin only controllers
@@ -259,9 +260,8 @@ exports.adminUpdateOneProduct = BigPromise(async (req, res, next) => {
         secure_url: result.secure_url,
       });
     }
+    req.body.photos = imagesArray;
   }
-
-  req.body.photos = imagesArray;
 
   product = await Product.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
