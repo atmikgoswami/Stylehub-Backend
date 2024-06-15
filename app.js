@@ -30,6 +30,8 @@ app.use(
 //morgan middleware
 app.use(morgan("tiny"));
 
+app.get("/", (req, res) => res.send("Welcome to StyleHub API"));
+
 //import all routes here
 const user = require("./routes/user");
 const product = require("./routes/product");
