@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+const path = require('path');
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const fileUpload = require("express-fileupload");
@@ -10,7 +11,7 @@ app.use(cors());
 //for swagger documentation
 const swaggerUi = require("swagger-ui-express");
 const YAML = require("yamljs");
-const swaggerDocument = YAML.load("./swagger.yaml");
+const swaggerDocument = YAML.load(path.resolve(__dirname, 'swagger.yaml'));
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 //regular middleware
