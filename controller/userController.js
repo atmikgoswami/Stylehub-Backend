@@ -95,7 +95,7 @@ exports.forgotPassword = BigPromise(async (req,res,next)=>{
   try {
       await mailHelper({
           email: user.email,
-          subject: "T-shirt Store : Password reset email",
+          subject: "StyleHub : Password reset email",
           message,
       });
 
